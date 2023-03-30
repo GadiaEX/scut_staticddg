@@ -82,6 +82,7 @@ def select_frameworks_to_install(
                         )
         else:
             raise ValueError("Invalid backends list")
+
     else:
         raise ValueError("Invalid frameworks list")
 
