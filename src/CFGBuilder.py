@@ -56,20 +56,21 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_If(self, node):
         content = astor.to_source(node.test).strip()
-        self.cfg_nodes.append(Node(node.lineno + self.base_line, 'if ' + content.split('\n')[0]))
+        if_stmt = Node(node.lineno + self.base_line, 'if ' + content.split('\n')[0])
+        if len(self.cfg_nodes) > 0:
+            self.cfg_nodes[-1].add_child(if_stmt)
+        self.cfg_nodes.append(if_stmt)
         end_if = Node(node.lineno + self.base_line, 'end-if')
 
         if_body = node.body
         else_body = node.orelse if node.orelse else []
-
-        if_stmt = self.cfg_nodes[-1]
 
         current = None
         for stmt in if_body:
             child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
             if_stmt.add_child(child)
             if current is not None:
-                current.append(child)
+                current += child
             else:
                 current = child
             # self.visit(stmt)
@@ -87,11 +88,14 @@ class CFGVisitor(ast.NodeVisitor):
             else_nodes = []
             for stmt in else_body:
                 child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
-                else_nodes += (child)
+                else_nodes += child
                 # self.visit(stmt)
-            else_nodes[-1].add_child(end_if)
-            if_stmt.add_child(else_nodes[0])
-            self.cfg_nodes += else_nodes
+            if len(else_nodes) > 0:
+                else_nodes[-1].add_child(end_if)
+                if_stmt.add_child(else_nodes[0])
+                self.cfg_nodes += else_nodes
+            else:
+                if_stmt.add_child(end_if)
         else:
             if_stmt.add_child(end_if)
 
@@ -100,32 +104,43 @@ class CFGVisitor(ast.NodeVisitor):
     def visit_While(self, node):
         content = astor.to_source(node).strip()
         end_while = Node(node.lineno + self.base_line, 'end-while')
-        cfg_node = Node(node.lineno + self.base_line, 'if ' + content.split('\n')[0])
+        cfg_node = Node(node.lineno + self.base_line, content.split('\n')[0])
+        cfg_node.add_child(end_while)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
 
-        test_node = Node(node.test.lineno + self.base_line, astor.to_source(node.test).strip())
-        cfg_node.add_child(test_node)
+        # test_node = Node(node.test.lineno + self.base_line, astor.to_source(node.test).strip())
+        # cfg_node.add_child(test_node)
 
         if hasattr(node, 'body'):
             current = []
             for stmt in node.body:
-                child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
+                child = CFGVisitor(astor.to_source(stmt).strip(), node.lineno + self.base_line).build_cfg()
+                if len(current) > 0:
+                    current[-1].add_child(child[0])
                 current += child
-                self.visit(stmt)
+
             if len(node.body) > 0:
                 current[-1].add_child(end_while)
-                test_node.add_child(current[0])
+                cfg_node.add_child(current[0])
+            else:
+                cfg_node.add_child(end_while)
+
+            self.cfg_nodes += current
 
         elif hasattr(node, 'orelse'):
             current = []
             for stmt in node.orelse:
                 child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
                 current += child
-                self.visit(stmt)
-            if len(node.orelse) > 0:
+
+            if len(node.body) > 0:
                 current[-1].add_child(end_while)
-                test_node.add_child(current[0])
+                cfg_node.add_child(current[0])
+            else:
+                cfg_node.add_child(end_while)
+
+            self.cfg_nodes += current
 
         self.cfg_nodes.append(cfg_node)
         self.cfg_nodes.append(end_while)
@@ -160,7 +175,7 @@ class CFGVisitor(ast.NodeVisitor):
             for stmt in node.orelse:
                 child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
                 current += child
-                self.visit(stmt)
+
             if len(node.body) > 0:
                 current[-1].add_child(end_for)
                 cfg_node.add_child(current[0])
@@ -173,19 +188,30 @@ class CFGVisitor(ast.NodeVisitor):
         self.cfg_nodes.append(end_for)
 
     def export_cfg_to_mermaid(self):
-        code = "graph TD;\n"
+        ret = "graph TD;\n"
 
-        # Add nodes
-        for node in self.cfg_nodes:
-            content = node.content.replace('"', '\\"')
-            code += f'{node.line}["{content}"]\n'
-            for child in node.children:
-                child_content = child.content.replace('"', '\\"')
-                code += f'{child.line}["{child_content}"]\n'
+        node_instance = {}
+        id_counter: int = 1
+
+        # build nodes
+        for each in self.cfg_nodes:
+            if id(each) not in node_instance:
+                node_instance[id(each)] = id_counter
+                id_counter = id_counter + 1
+                content = each.content.replace('\n', '\\n')
+                ret += f'{node_instance[id(each)]}["{content}\n(line: {each.line})"]\n'
+            for child in each.children:
+                if id(child) not in node_instance:
+                    node_instance[id(child)] = id_counter
+                    id_counter = id_counter + 1
+                    content = child.content.replace('\n', '\\n')
+                    ret += f'{node_instance[id(child)]}["{content}\n(line: {child.line})"]\n'
 
         # Add edges
-        for node in self.cfg_nodes:
-            for child in node.children:
-                code += f'{node.line} --> {child.line}\n'
+        for each in self.cfg_nodes:
+            node_id = id(each)
+            for child in each.children:
+                child_id = id(child)
+                ret += f'{node_instance[node_id]}-->{node_instance[child_id]}\n'
 
-        return code
+        return ret
