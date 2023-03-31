@@ -1,11 +1,8 @@
-import typing
 import ast
 import astor
+import copy
 
-import ast
-import astor
-
-class Node:
+class CFGNode:
     def __init__(self, line, content):
         self.line = line
         self.content = content.strip()
@@ -72,3 +69,16 @@ class Node:
             self.children.append(child)
     def __repr__(self):
         return f'Node(line={self.line}, content="{self.content}", used_vars={sorted(self.used_vars)}, defined_vars={sorted(self.defined_vars)}, function_calls={self.function_calls})'
+
+class DDGNode:
+
+    def __init__(self, cfg_node: CFGNode):
+        self.line = copy.deepcopy(cfg_node.line)
+        self.content = copy.deepcopy(cfg_node.content)
+        self.children = []
+        self.function_calls = copy.deepcopy(cfg_node.function_calls)
+        self.used_vars = copy.deepcopy(cfg_node.used_vars)
+        self.defined_vars = copy.deepcopy(cfg_node.defined_vars)
+
+    def add_child(self, child):
+        self.children.append(child)

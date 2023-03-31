@@ -2,7 +2,7 @@
     Data dependence graph builder, for building Graph use
 """
 # Gadia, 2023
-from src.Model import Node
+from src.Model import CFGNode as Node
 import ast
 import astor
 
