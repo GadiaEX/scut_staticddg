@@ -2,7 +2,7 @@
     Data dependence graph builder, for building Graph use
 """
 # Gadia, 2023
-from src.Model import CFGNode as Node
+import src.Model
 import ast
 import astor
 
@@ -31,7 +31,7 @@ class CFGVisitor(ast.NodeVisitor):
         if not cfg_nodes:
             return
 
-        entry_node = Node(node.lineno + self.base_line, f'function {node.name}')
+        entry_node = src.Model.CFGNode(node.lineno + self.base_line, f'function {node.name}')
         entry_node.add_child(cfg_nodes[0])
         self.cfg_nodes.append(entry_node)
         self.function_def_node[f'{node.name}'] = entry_node
@@ -41,14 +41,14 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         content = astor.to_source(node).strip()
-        temp = Node(node.lineno + self.base_line, content)
+        temp = src.Model.CFGNode(node.lineno + self.base_line, content)
         if len(self.cfg_nodes) > 1:
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_nodes.append(temp)
 
     def visit_Expr(self, node):
         content = astor.to_source(node).strip()
-        temp = Node(node.lineno + self.base_line, content)
+        temp = src.Model.CFGNode(node.lineno + self.base_line, content)
         if len(self.cfg_nodes) > 1:
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_nodes.append(temp)
@@ -56,11 +56,11 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_If(self, node):
         content = astor.to_source(node.test).strip()
-        if_stmt = Node(node.lineno + self.base_line, 'if ' + content.split('\n')[0])
+        if_stmt = src.Model.IfNode(node.lineno + self.base_line, content.split('\n')[0])
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(if_stmt)
         self.cfg_nodes.append(if_stmt)
-        end_if = Node(node.lineno + self.base_line, 'end-if')
+        end_if = src.Model.EndIfNode(node.lineno + self.base_line)
 
         if_body = node.body
         else_body = node.orelse if node.orelse else []
@@ -102,14 +102,14 @@ class CFGVisitor(ast.NodeVisitor):
         self.cfg_nodes.append(end_if)
 
     def visit_While(self, node):
-        content = astor.to_source(node).strip()
-        end_while = Node(node.lineno + self.base_line, 'end-while')
-        cfg_node = Node(node.lineno + self.base_line, content.split('\n')[0])
+        content = astor.to_source(node.test).strip()
+        end_while = src.Model.EndWhileNode(node.lineno + self.base_line)
+        cfg_node = src.Model.WhileNode(node.lineno + self.base_line, content.split('\n')[0])
         cfg_node.add_child(end_while)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
 
-        # test_node = Node(node.test.lineno + self.base_line, astor.to_source(node.test).strip())
+        # test_node = src.Model.CFGNode(node.test.lineno + self.base_line, astor.to_source(node.test).strip())
         # cfg_node.add_child(test_node)
 
         if hasattr(node, 'body'):
@@ -146,10 +146,11 @@ class CFGVisitor(ast.NodeVisitor):
         self.cfg_nodes.append(end_while)
 
     def visit_For(self, node):
-        content = astor.to_source(node).strip()
+        # @TODO(statement error)
+        content = astor.to_source(node.iter).strip()
         for_node_content = content.split('\n')[0]
-        cfg_node = Node(node.lineno + self.base_line, for_node_content)
-        end_for = Node(node.lineno + self.base_line, 'end-for')
+        cfg_node = src.Model.CFGNode(node.lineno + self.base_line, for_node_content)
+        end_for = src.Model.EndForNode(node.lineno + self.base_line)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
 
