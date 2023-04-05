@@ -6,6 +6,7 @@ def main(file_name:str):
         src_code = src_file.read()
     cfg = src.CFGBuilder.CFGVisitor(src_code)
     cfg.build_cfg()
+    code = cfg.export_cfg_to_mermaid()
 
     ddg = src.DDGBuilder.DDGVisitor(cfg.cfg_nodes)
     ddg.build_ddg()

@@ -1,6 +1,7 @@
 import copy
 import src.Model
 
+
 class DDGVisitor:
 
     def __init__(self, cfg_nodes: list):
@@ -28,7 +29,6 @@ class DDGVisitor:
                 self.ddg_node_counter = self.ddg_node_counter + 1
                 self.ddg_nodes.append(node)
 
-
             for child in each.children:
                 if id(child) not in self.cfg_node_id_mapping:
                     self.cfg_node_id_mapping[id(child)] = self.ddg_node_counter
@@ -39,9 +39,6 @@ class DDGVisitor:
                     self.cfg_obj_lookup_table[self.ddg_node_counter] = child
                     self.ddg_node_counter = self.ddg_node_counter + 1
                     self.ddg_nodes.append(node)
-
-
-
 
     def build_ddg(self):
         # from var_name to node_id
@@ -72,7 +69,6 @@ class DDGVisitor:
                 pass
             var_dict[each] = id(ddg_node)
 
-
         for each in node.children:
             self.dfs_search(var_dict, visited_table, each)
 
@@ -83,7 +79,6 @@ class DDGVisitor:
         for each in var_backup:
             for key, value in each.items():
                 var_dict[key] = value
-
 
     def export_mermaid_code(self) -> str:
         ret = "graph TD;\n"

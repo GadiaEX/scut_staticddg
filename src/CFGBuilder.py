@@ -6,12 +6,13 @@ import src.Model
 import ast
 import astor
 
+
 class CFGVisitor(ast.NodeVisitor):
-    def __init__(self, source_code, base_line = 0):
+    def __init__(self, source_code, base_line=0):
         self.source_code = source_code
         self.cfg_nodes = []
         self.function_def_node = {}
-        self.base_line:int = base_line
+        self.base_line: int = base_line
 
     def build_cfg(self):
         self.visit(ast.parse(self.source_code))
@@ -53,7 +54,6 @@ class CFGVisitor(ast.NodeVisitor):
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_nodes.append(temp)
 
-
     def visit_If(self, node):
         content = astor.to_source(node.test).strip()
         if_stmt = src.Model.IfNode(node.lineno + self.base_line, content.split('\n')[0])
@@ -78,7 +78,6 @@ class CFGVisitor(ast.NodeVisitor):
         if current is not None and len(current) > 0:
             current[-1].add_child(end_if)
             self.cfg_nodes += current
-
 
         if not if_stmt.children:
             if_stmt.add_child(end_if)
@@ -146,14 +145,12 @@ class CFGVisitor(ast.NodeVisitor):
         self.cfg_nodes.append(end_while)
 
     def visit_For(self, node):
-        # @TODO(statement error)
-        content = astor.to_source(node.iter).strip()
-        for_node_content = content.split('\n')[0]
-        cfg_node = src.Model.CFGNode(node.lineno + self.base_line, for_node_content)
+        content = astor.to_source(node).strip()
+        cfg_node = src.Model.ForNode(node.lineno + self.base_line, content)
         end_for = src.Model.EndForNode(node.lineno + self.base_line)
+        cfg_node.add_child(end_for)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
-
 
         if hasattr(node, 'body'):
             current = []
@@ -199,14 +196,12 @@ class CFGVisitor(ast.NodeVisitor):
             if id(each) not in node_instance:
                 node_instance[id(each)] = id_counter
                 id_counter = id_counter + 1
-                content = each.content.replace('\n', '\\n')
-                ret += f'{node_instance[id(each)]}["{content}\n(line: {each.line})"]\n'
+                ret += f'{node_instance[id(each)]}{str(each)}'
             for child in each.children:
                 if id(child) not in node_instance:
                     node_instance[id(child)] = id_counter
                     id_counter = id_counter + 1
-                    content = child.content.replace('\n', '\\n')
-                    ret += f'{node_instance[id(child)]}["{content}\n(line: {child.line})"]\n'
+                    ret += f'{node_instance[id(child)]}{str(child)}'
 
         # Add edges
         for each in self.cfg_nodes:
