@@ -5,17 +5,21 @@
 import src.Model
 import ast
 import astor
+import tokenize
 
 
 class CFGVisitor(ast.NodeVisitor):
     def __init__(self, source_code, base_line=0):
         self.source_code = source_code
         self.cfg_nodes = []
-        self.function_def_node = {}
+        self.cfg_exit_nodes = []
+        self.function_def_node: dict = {}
+        self.function_doc_string: dict = {}
         self.base_line: int = base_line
 
     def build_cfg(self):
         self.visit(ast.parse(self.source_code))
+        self.cfg_nodes += self.cfg_exit_nodes
         return self.cfg_nodes
 
     def visit_Module(self, node):
@@ -24,21 +28,53 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         cfg_visitor = CFGVisitor('')
+
+        # get docstring, @TODO
+        doc_string = ast.get_docstring(node)
+
         # get args
+        args: list = []
+        for each_arg in node.args.args:
+            args.append(each_arg.arg)
+
+        # parse body
         for item in node.body:
+            if isinstance(item, ast.Expr) and isinstance(item.value, ast.Str):
+                continue
             cfg_visitor.visit(item)
 
         cfg_nodes = cfg_visitor.cfg_nodes
         if not cfg_nodes:
             return
+        # concat args and function name
+        func_node_name: str = f'def {node.name}'
+        args_str: str = ''
+        for each_arg in args:
+            args_str += f'{each_arg}, '
+        if len(args) > 0:
+            args_str = args_str[:-2]
+        # create cfg node
+        entry_node = src.Model.CFGNode(node.lineno + self.base_line, f'{func_node_name}({args_str})')
 
-        entry_node = src.Model.CFGNode(node.lineno + self.base_line, f'function {node.name}')
+        # add variable info
+        for each_arg in args:
+            entry_node.defined_vars.add(each_arg)
+
         entry_node.add_child(cfg_nodes[0])
         self.cfg_nodes.append(entry_node)
+        self.cfg_nodes += cfg_nodes
         self.function_def_node[f'{node.name}'] = entry_node
+        self.function_doc_string[f'{node.name}'] = doc_string
 
     def visit_ClassDef(self, node):
         pass
+
+    def visit_Return(self, node):
+        content = astor.to_source(node).strip()
+        temp = src.Model.ReturnNode(node.lineno + self.base_line, content)
+        if len(self.cfg_nodes) > 1:
+            self.cfg_nodes[-1].add_child(temp)
+        self.cfg_exit_nodes.append(temp)
 
     def visit_Assign(self, node):
         content = astor.to_source(node).strip()
@@ -76,7 +112,8 @@ class CFGVisitor(ast.NodeVisitor):
             # self.visit(stmt)
 
         if current is not None and len(current) > 0:
-            current[-1].add_child(end_if)
+            if not isinstance(current[-1], src.Model.ReturnNode):
+                current[-1].add_child(end_if)
             self.cfg_nodes += current
 
         if not if_stmt.children:
@@ -115,11 +152,11 @@ class CFGVisitor(ast.NodeVisitor):
             current = []
             for stmt in node.body:
                 child = CFGVisitor(astor.to_source(stmt).strip(), node.lineno + self.base_line).build_cfg()
-                if len(current) > 0:
+                if len(current) > 0 and len(child) > 0:
                     current[-1].add_child(child[0])
                 current += child
 
-            if len(node.body) > 0:
+            if len(current) > 0:
                 current[-1].add_child(end_while)
                 cfg_node.add_child(current[0])
             else:
@@ -133,7 +170,7 @@ class CFGVisitor(ast.NodeVisitor):
                 child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
                 current += child
 
-            if len(node.body) > 0:
+            if len(current) > 0:
                 current[-1].add_child(end_while)
                 cfg_node.add_child(current[0])
             else:
@@ -156,11 +193,11 @@ class CFGVisitor(ast.NodeVisitor):
             current = []
             for stmt in node.body:
                 child = CFGVisitor(astor.to_source(stmt).strip(), node.lineno + self.base_line).build_cfg()
-                if len(current) > 0:
+                if len(current) > 0 and len(child) > 0:
                     current[-1].add_child(child[0])
                 current += child
 
-            if len(node.body) > 0:
+            if len(current) > 0:
                 current[-1].add_child(end_for)
                 cfg_node.add_child(current[0])
             else:
@@ -174,7 +211,7 @@ class CFGVisitor(ast.NodeVisitor):
                 child = CFGVisitor(astor.to_source(stmt).strip(), stmt.lineno + self.base_line).build_cfg()
                 current += child
 
-            if len(node.body) > 0:
+            if len(current) > 0:
                 current[-1].add_child(end_for)
                 cfg_node.add_child(current[0])
             else:

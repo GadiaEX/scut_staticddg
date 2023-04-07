@@ -14,6 +14,10 @@ class CFGNode:
         self._extract_vars()
         self._extract_function_calls()
 
+    def add_function_call(self, func) -> None:
+        if func not in self.function_calls:
+            self.function_calls.append(func)
+
     def _extract_vars(self):
         try:
             stmt = ast.parse(self.content).body[0]
@@ -59,8 +63,10 @@ class CFGNode:
                 if isinstance(arg, ast.Name):
                     args.append(arg.id)
                 # else:
-                #     args.append(astor.to_source(arg).strip())
-            self.function_calls.append({'name': func_name, 'args': args})
+            self.add_function_call(func_name)
+            for each_arg in args:
+                if each_arg not in self.used_vars:
+                    self.used_vars.add(each_arg)
 
     def add_child(self, child):
         if type(child) is list:
@@ -132,8 +138,10 @@ class ForNode(CFGNode):
             targets.append(stmt.target.id)
         elif isinstance(stmt.target, ast.Tuple):
             # If target is a tuple, get the names of all variables in it
-            for elt in stmt.target.elts:
-                targets.append(elt.id)
+            for elt in ast.walk(stmt.target):
+                if isinstance(elt, ast.Name):
+                    targets.append(elt.id)
+
         elif isinstance(stmt.target, ast.Starred):
             # If target is a starred expression, get the name of the variable it represents
             targets.append(stmt.target.value.id)
@@ -154,14 +162,14 @@ class ForNode(CFGNode):
         if isinstance(iter_node, ast.Call):
             # If iter is a function call, get the function name, object name (if any), and arguments
             func_node = iter_node.func
-            if hasattr(func_node, 'attr') and hasattr(func_node, 'value'):
-                func_name = func_node.attr
-                obj_node = func_node.value
-                obj_name = obj_node.id
+            # if hasattr(func_node, 'attr') and hasattr(func_node, 'value'):
+            #     func_name = func_node.attr
+            #     obj_node = func_node.value
+            #     obj_name = obj_node.id
 
-            elif hasattr(func_node, 'id'):
+            if hasattr(func_node, 'id'):
                 func_name = func_node.id
-                self.function_calls.append(func_name)
+                self.add_function_call(func_name)
 
             # collect args
             for each in iter_node.args:
@@ -179,6 +187,44 @@ class EndForNode(EndNode):
         content = 'end-for'
         super().__init__(line, content)
 
+
+class ReturnNode(CFGNode):
+
+    def __init__(self, line, content=None):
+        super().__init__(line, content)
+
+    def _extract_vars(self):
+        try:
+            stmt = ast.parse(self.content).body[0]
+        except SyntaxError:
+            return
+
+        if not isinstance(stmt, ast.Return) or stmt.value is None:
+            return
+
+        for node in ast.walk(stmt.value):
+            if isinstance(node, ast.Name):
+                self.used_vars.add(node.id)
+            # var function depends
+            if isinstance(node, ast.Call):
+                for each_arg in node.args:
+                    if isinstance(each_arg, ast.Name):
+                        self.used_vars.add(each_arg.id)
+
+    def _extract_function_calls(self):
+        try:
+            stmt = ast.parse(self.content).body[0]
+        except SyntaxError:
+            return
+
+        if not isinstance(stmt, ast.Return) or stmt.value is None:
+            return
+
+        for node in ast.walk(stmt.value):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name):
+                    self.add_function_call(func.id)
 
 class DDGNode:
 

@@ -1,3 +1,11 @@
+def test_function(a1: int):
+    """
+
+    :param a1:
+    :return:
+    """
+    print(a1)
+
 a = 1
 if a > 10:
     b = a + 1
