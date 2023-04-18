@@ -1,7 +1,7 @@
 import src.CFGBuilder
 import src.DDGBuilder
 import json
-
+import src.Utils
 debug_counter: int = 0
 def debug_specific(file_name: str, counter: int) -> None:
     with open(file_name, 'r') as src_file:
@@ -13,12 +13,19 @@ def build_once(src_code: str) -> None:
     # print('\n' + src_code)
     cfg = src.CFGBuilder.CFGVisitor(src_code)
     cfg.build_cfg()
-    code = cfg.export_cfg_to_mermaid()
+    # code = cfg.export_cfg_to_mermaid()
 
+    # main
     ddg = src.DDGBuilder.DDGVisitor(cfg.cfg_nodes)
     ddg.build_ddg()
-    code = ddg.export_mermaid_code()
-    print(code)
+
+    # function
+    ddgs: list = [ddg]
+    for key,value in cfg.function_def_node.items():
+        ddgs.append(src.DDGBuilder.DDGVisitor(value.cfg_nodes, key))
+        ddgs[-1].build_ddg()
+    data = src.Utils.DataContainer(cfg, ddgs, True)
+    print(str(data))
 def sample_test():
     with open('target.py', 'r') as src_file:
         src_code = src_file.read()
@@ -44,6 +51,8 @@ def main(file_name:str):
 
 
 if __name__ == '__main__':
+    sample_test()
+    exit(0)
     # debug_specific('python_test_0.jsonl', 1940)
     try:
         main('python_test_0.jsonl')

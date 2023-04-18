@@ -1,6 +1,5 @@
 import ast
 import astor
-import copy
 
 
 class CFGNode:
@@ -115,6 +114,11 @@ class EndIfNode(EndNode):
         content = 'end-if'
         super().__init__(line, content)
 
+class FunctionNode(CFGNode):
+
+    def __init__(self, line, content):
+        super().__init__(line, content)
+        self.cfg_nodes = []
 
 class ForNode(CFGNode):
     def __init__(self, line, content):
@@ -148,6 +152,7 @@ class ForNode(CFGNode):
         # merge it
         for each in targets:
             self.defined_vars.add(each)
+
 
     def _extract_function_calls(self):
         try:
@@ -225,22 +230,3 @@ class ReturnNode(CFGNode):
                 func = node.func
                 if isinstance(func, ast.Name):
                     self.add_function_call(func.id)
-
-class DDGNode:
-
-    def __init__(self, cfg_node: CFGNode):
-        self.line = copy.deepcopy(cfg_node.line)
-        self.content = copy.deepcopy(cfg_node.content)
-        # we don't have children in dgg, parent instead
-        self.children = []
-        self.parent = []
-        self.function_calls = copy.deepcopy(cfg_node.function_calls)
-        self.used_vars = copy.deepcopy(cfg_node.used_vars)
-        self.defined_vars = copy.deepcopy(cfg_node.defined_vars)
-
-    def add_child(self, child):
-        pass
-
-    def add_parent(self, parent):
-        if parent not in self.parent:
-            self.parent.append(parent)

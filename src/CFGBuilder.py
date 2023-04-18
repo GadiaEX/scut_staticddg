@@ -2,10 +2,9 @@
     Data dependence graph builder, for building Graph use
 """
 # Gadia, 2023
-import src.Model
+import src.Model.CFGNode
 import ast
 import astor
-import tokenize
 
 
 class CFGVisitor(ast.NodeVisitor):
@@ -54,49 +53,69 @@ class CFGVisitor(ast.NodeVisitor):
         if len(args) > 0:
             args_str = args_str[:-2]
         # create cfg node
-        entry_node = src.Model.CFGNode(node.lineno + self.base_line, f'{func_node_name}({args_str})')
+        entry_node = src.Model.CFGNode.FunctionNode(node.lineno + self.base_line, f'{func_node_name}({args_str})')
 
         # add variable info
         for each_arg in args:
             entry_node.defined_vars.add(each_arg)
 
         entry_node.add_child(cfg_nodes[0])
-        self.cfg_nodes.append(entry_node)
-        self.cfg_nodes += cfg_nodes
+        entry_node.cfg_nodes += cfg_nodes
         self.function_def_node[f'{node.name}'] = entry_node
         self.function_doc_string[f'{node.name}'] = doc_string
 
     def visit_ClassDef(self, node):
         pass
 
+    def visit_Try(self, node: ast.Try):
+        # body
+        cfg_visitor = CFGVisitor('')
+        for item in node.body:
+            cfg_visitor.visit(item)
+
+        # exception
+        for eachException in node.handlers:
+            cfg_visitor = CFGVisitor('')
+            for item in eachException.body:
+                if isinstance(item, ast.Expr) and isinstance(item.value, ast.Str):
+                    continue
+                cfg_visitor.visit(item)
+        # final
+        cfg_visitor = CFGVisitor('')
+        for item in node.finalbody:
+            cfg_visitor.visit(item)
+
+
+
+
     def visit_Return(self, node):
         content = astor.to_source(node).strip()
-        temp = src.Model.ReturnNode(node.lineno + self.base_line, content)
+        temp = src.Model.CFGNode.ReturnNode(node.lineno + self.base_line, content)
         if len(self.cfg_nodes) > 1:
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_exit_nodes.append(temp)
 
     def visit_Assign(self, node):
         content = astor.to_source(node).strip()
-        temp = src.Model.CFGNode(node.lineno + self.base_line, content)
+        temp = src.Model.CFGNode.CFGNode(node.lineno + self.base_line, content)
         if len(self.cfg_nodes) > 1:
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_nodes.append(temp)
 
     def visit_Expr(self, node):
         content = astor.to_source(node).strip()
-        temp = src.Model.CFGNode(node.lineno + self.base_line, content)
+        temp = src.Model.CFGNode.CFGNode(node.lineno + self.base_line, content)
         if len(self.cfg_nodes) > 1:
             self.cfg_nodes[-1].add_child(temp)
         self.cfg_nodes.append(temp)
 
     def visit_If(self, node):
         content = astor.to_source(node.test).strip()
-        if_stmt = src.Model.IfNode(node.lineno + self.base_line, content.split('\n')[0])
+        if_stmt = src.Model.CFGNode.IfNode(node.lineno + self.base_line, content.split('\n')[0])
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(if_stmt)
         self.cfg_nodes.append(if_stmt)
-        end_if = src.Model.EndIfNode(node.lineno + self.base_line)
+        end_if = src.Model.CFGNode.EndIfNode(node.lineno + self.base_line)
 
         if_body = node.body
         else_body = node.orelse if node.orelse else []
@@ -112,7 +131,7 @@ class CFGVisitor(ast.NodeVisitor):
             # self.visit(stmt)
 
         if current is not None and len(current) > 0:
-            if not isinstance(current[-1], src.Model.ReturnNode):
+            if not isinstance(current[-1], src.Model.CFGNode.ReturnNode):
                 current[-1].add_child(end_if)
             self.cfg_nodes += current
 
@@ -139,8 +158,8 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_While(self, node):
         content = astor.to_source(node.test).strip()
-        end_while = src.Model.EndWhileNode(node.lineno + self.base_line)
-        cfg_node = src.Model.WhileNode(node.lineno + self.base_line, content.split('\n')[0])
+        end_while = src.Model.CFGNode.EndWhileNode(node.lineno + self.base_line)
+        cfg_node = src.Model.CFGNode.WhileNode(node.lineno + self.base_line, content.split('\n')[0])
         cfg_node.add_child(end_while)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
@@ -183,8 +202,8 @@ class CFGVisitor(ast.NodeVisitor):
 
     def visit_For(self, node):
         content = astor.to_source(node).strip()
-        cfg_node = src.Model.ForNode(node.lineno + self.base_line, content)
-        end_for = src.Model.EndForNode(node.lineno + self.base_line)
+        cfg_node = src.Model.CFGNode.ForNode(node.lineno + self.base_line, content)
+        end_for = src.Model.CFGNode.EndForNode(node.lineno + self.base_line)
         cfg_node.add_child(end_for)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
@@ -242,6 +261,34 @@ class CFGVisitor(ast.NodeVisitor):
 
         # Add edges
         for each in self.cfg_nodes:
+            node_id = id(each)
+            for child in each.children:
+                child_id = id(child)
+                ret += f'{node_instance[node_id]}-->{node_instance[child_id]}\n'
+
+        return ret
+
+    @staticmethod
+    def __build_mermaid_once(cfg_nodes: list, after_fix: int) -> str:
+        ret = f'subgraph \"{after_fix}\";\n'
+
+        node_instance = {}
+        id_counter: int = 1
+
+        # build nodes
+        for each in cfg_nodes:
+            if id(each) not in node_instance:
+                node_instance[id(each)] = id_counter
+                id_counter = id_counter + 1
+                ret += f'{node_instance[id(each)]}{str(each)}'
+            for child in each.children:
+                if id(child) not in node_instance:
+                    node_instance[id(child)] = id_counter
+                    id_counter = id_counter + 1
+                    ret += f'{node_instance[id(child)]}{str(child)}'
+
+        # Add edges
+        for each in cfg_nodes:
             node_id = id(each)
             for child in each.children:
                 child_id = id(child)
