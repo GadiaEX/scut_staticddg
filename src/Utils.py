@@ -51,11 +51,11 @@ class DataContainer:
 
         return ret
 
-    def _convert_nodes_to_str(self, nodes: list, ignore_end: bool=False) -> str:
+    def _convert_nodes_to_str(self, nodes: list, ignore_end: bool=False, ddg_index=0) -> str:
         ret = ''
         for each in nodes:
-            if ignore_end:
-                if issubclass(type(each), src.Model.CFGNode.EndNode):
+            if ignore_end and isinstance(each, src.Model.DDGNode.DDGNode):
+                if self.is_end_node(each, ddg_index):
                     continue
             if id(each) not in self.node_instance:
                 self.node_instance[id(each)] = self.id_counter
@@ -77,7 +77,7 @@ class DataContainer:
         ret = 'graph TD;\n'
         # export main function
         ret += f'subgraph \"main\"\n'
-        ret += self._convert_nodes_to_str(self.ddg_data[0].ddg_nodes, True)
+        ret += self._convert_nodes_to_str(self.ddg_data[0].ddg_nodes, True, 0)
         # edge
         for each in self.ddg_data[0].ddg_nodes:
             if self.is_end_node(each):
@@ -102,7 +102,7 @@ class DataContainer:
             if name == 'main':
                 continue
             ret += f'subgraph \"{name}\"\n'
-            ret += self._convert_nodes_to_str(current_ddg.ddg_nodes)
+            ret += self._convert_nodes_to_str(current_ddg.ddg_nodes, True, index)
             # edge
             for each in current_ddg.ddg_nodes:
                 node_id = id(each)

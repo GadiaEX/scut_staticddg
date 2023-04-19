@@ -30,13 +30,13 @@ class DDGVisitor:
                 if id(child) not in self.cfg_node_id_mapping:
                     self.create_ddg_node(child)
 
-    def create_ddg_node(self, node: src.Model.CFGNode.CFGNode):
-        self.cfg_node_id_mapping[id(node)] = self.ddg_node_counter
+    def create_ddg_node(self, cfg_node: src.Model.CFGNode.CFGNode):
+        self.cfg_node_id_mapping[id(cfg_node)] = self.ddg_node_counter
         # create new ddg node
-        node = src.Model.DDGNode.DDGNode(node)
+        node = src.Model.DDGNode.DDGNode(cfg_node)
         self.ddg_node_instances[self.ddg_node_counter] = node
         self.ddg_node_id_mapping[id(node)] = self.ddg_node_counter
-        self.cfg_obj_lookup_table[self.ddg_node_counter] = node
+        self.cfg_obj_lookup_table[self.ddg_node_counter] = cfg_node
         self.ddg_node_counter = self.ddg_node_counter + 1
         self.ddg_nodes.append(node)
 

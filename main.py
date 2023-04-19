@@ -25,7 +25,7 @@ def build_once(src_code: str) -> None:
         ddgs.append(src.DDGBuilder.DDGVisitor(value.cfg_nodes, key))
         ddgs[-1].build_ddg()
     data = src.Utils.DataContainer(cfg, ddgs, True)
-    print(str(data))
+    data.export_ddg_mermaid()
 def sample_test():
     with open('target.py', 'r') as src_file:
         src_code = src_file.read()
