@@ -11,6 +11,7 @@ class DDGNode:
         self.function_calls = copy.deepcopy(cfg_node.function_calls)
         self.used_vars = copy.deepcopy(cfg_node.used_vars)
         self.defined_vars = copy.deepcopy(cfg_node.defined_vars)
+        self.cfg_prototype = cfg_node
 
     def add_child(self, child):
         pass

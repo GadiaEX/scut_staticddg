@@ -2,6 +2,7 @@ import src.CFGBuilder
 import src.DDGBuilder
 import json
 import src.Utils
+import flask
 debug_counter: int = 0
 def debug_specific(file_name: str, counter: int) -> None:
     with open(file_name, 'r') as src_file:
@@ -9,7 +10,7 @@ def debug_specific(file_name: str, counter: int) -> None:
     build_once(json.loads(json_codes[counter])['code'])
     src_file.close()
 
-def build_once(src_code: str) -> None:
+def build_once(src_code: str) -> str:
     # print('\n' + src_code)
     cfg = src.CFGBuilder.CFGVisitor(src_code)
     cfg.build_cfg()
@@ -25,12 +26,12 @@ def build_once(src_code: str) -> None:
         ddgs.append(src.DDGBuilder.DDGVisitor(value.cfg_nodes, key))
         ddgs[-1].build_ddg()
     data = src.Utils.DataContainer(cfg, ddgs, True)
-    data.export_ddg_mermaid()
+    return data.export_ddg_mermaid()
 def sample_test():
     with open('target.py', 'r') as src_file:
         src_code = src_file.read()
-    build_once(src_code)
     src_file.close()
+    return build_once(src_code)
 
 def main(file_name:str):
     global debug_counter
@@ -49,12 +50,12 @@ def main(file_name:str):
     print(succ_counter)
     src_file.close()
 
+app = flask.Flask(__name__)
 
-if __name__ == '__main__':
-    sample_test()
-    exit(0)
-    # debug_specific('python_test_0.jsonl', 1940)
-    try:
-        main('python_test_0.jsonl')
-    except Exception:
-        print(debug_counter)
+@app.route('/',methods={'POST'})
+def index():
+    json = flask.request.get_json()
+    print(json)
+    return sample_test()
+
+app.run()

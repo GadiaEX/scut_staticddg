@@ -13,8 +13,6 @@ class DDGVisitor:
         # from instance id (id function) to search node
         self.cfg_node_id_mapping = {}
         self.ddg_node_id_mapping = {}
-        # reverse cfg_node_id_mapping for tick end node out
-        self.cfg_obj_lookup_table = {}
         # from my id to search node
         self.ddg_node_instances: dict = {}
         self.name = name
@@ -36,7 +34,6 @@ class DDGVisitor:
         node = src.Model.DDGNode.DDGNode(cfg_node)
         self.ddg_node_instances[self.ddg_node_counter] = node
         self.ddg_node_id_mapping[id(node)] = self.ddg_node_counter
-        self.cfg_obj_lookup_table[self.ddg_node_counter] = cfg_node
         self.ddg_node_counter = self.ddg_node_counter + 1
         self.ddg_nodes.append(node)
 
@@ -79,49 +76,3 @@ class DDGVisitor:
         for each in var_backup:
             for key, value in each.items():
                 self.var_dict[key] = value
-
-    def export_mermaid_code(self) -> str:
-        ret = "graph TD;\n"
-
-        node_instance = {}
-        id_counter: int = 1
-        # build nodes
-        for each in self.ddg_nodes:
-            if self.is_end_node(each):
-                continue
-            if id(each) not in node_instance:
-                node_instance[id(each)] = id_counter
-                id_counter = id_counter + 1
-                content = each.content.replace('\n', '\\n')
-                ret += f'{node_instance[id(each)]}["{content}\n(line: {each.line})"]\n'
-            for each_parent in each.parent:
-                if self.is_end_node(each_parent):
-                    continue
-                if id(each_parent) not in node_instance:
-                    node_instance[id(each_parent)] = id_counter
-                    id_counter = id_counter + 1
-                    content = each_parent.content.replace('\n', '\\n')
-                    ret += f'{node_instance[id(each_parent)]}["{content}\n(line: {each_parent.line})"]\n'
-
-        # Add edges
-        for each in self.ddg_nodes:
-            if self.is_end_node(each):
-                continue
-            node_id = id(each)
-            for each_parent in each.parent:
-                if self.is_end_node(each_parent):
-                    continue
-                parent_id = id(each_parent)
-                ret += f'{node_instance[parent_id]}-->{node_instance[node_id]}\n'
-
-        return ret
-
-    def is_end_node(self, ddg_node: src.Model.DDGNode.DDGNode) -> bool:
-        node_obj_id = id(ddg_node)
-        node_id = self.ddg_node_id_mapping[node_obj_id]
-        cfg_node = self.cfg_obj_lookup_table[node_id]
-
-        if issubclass(type(cfg_node), src.Model.CFGNode.EndNode):
-            return True
-        else:
-            return False

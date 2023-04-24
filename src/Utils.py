@@ -115,9 +115,7 @@ class DataContainer:
         return ret
 
     def is_end_node(self, ddg_node: src.Model.DDGNode.DDGNode, index: int=0) -> bool:
-        node_obj_id = id(ddg_node)
-        node_id = self.ddg_data[index].ddg_node_id_mapping[node_obj_id]
-        cfg_node = self.ddg_data[index].cfg_obj_lookup_table[node_id]
+        cfg_node = ddg_node.cfg_prototype
 
         if issubclass(type(cfg_node), src.Model.CFGNode.EndNode):
             return True
