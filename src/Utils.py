@@ -68,7 +68,6 @@ class DataContainer:
                     ret += f'{self.node_instance[id(child)]}{str(child)}'
         return ret
 
-
     def export_ddg_mermaid(self) -> str:
         self.id_counter: int = 1
         self.node_instance.clear()
