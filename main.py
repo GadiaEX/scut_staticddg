@@ -2,7 +2,7 @@ import src.CFGBuilder
 import src.DDGBuilder
 import json
 import src.Utils
-import flask
+
 debug_counter: int = 0
 def debug_specific(file_name: str, counter: int) -> None:
     with open(file_name, 'r') as src_file:
@@ -33,7 +33,7 @@ def sample_test():
     src_file.close()
     return build_once(src_code)
 
-def main(file_name:str):
+def test_main(file_name:str):
     global debug_counter
     with open(file_name, 'r') as src_file:
         json_codes: list = src_file.readlines()
@@ -50,12 +50,5 @@ def main(file_name:str):
     print(succ_counter)
     src_file.close()
 
-app = flask.Flask(__name__)
-
-@app.route('/',methods={'POST'})
-def index():
-    json = flask.request.get_json()
-    print(json)
-    return sample_test()
-
-app.run()
+def interface_main(src_code: str) -> str:
+    return build_once(src_code)
