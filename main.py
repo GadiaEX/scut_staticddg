@@ -2,6 +2,7 @@ import src.CFGBuilder
 import src.DDGBuilder
 import json
 import src.Utils
+import flask
 
 debug_counter: int = 0
 def debug_specific(file_name: str, counter: int) -> None:
@@ -26,7 +27,7 @@ def build_once(src_code: str) -> str:
         ddgs.append(src.DDGBuilder.DDGVisitor(value.cfg_nodes, key))
         ddgs[-1].build_ddg()
     data = src.Utils.DataContainer(cfg, ddgs, True)
-    return data.export_ddg_mermaid()
+    return str(data)
 def sample_test():
     with open('target.py', 'r') as src_file:
         src_code = src_file.read()
@@ -52,3 +53,13 @@ def test_main(file_name:str):
 
 def interface_main(src_code: str) -> str:
     return build_once(src_code)
+
+app = flask.Flask(__name__)
+
+@app.route('/python', methods=['POST'])
+def index():
+    code = flask.request.get_json()['code']
+    return build_once(code)
+
+if __name__ == '__main__':
+    app.run()
