@@ -62,4 +62,7 @@ def index():
     return build_once(code)
 
 if __name__ == '__main__':
-    app.run()
+    # app.run()
+    ret = sample_test()
+    print(ret)
+    print('test')

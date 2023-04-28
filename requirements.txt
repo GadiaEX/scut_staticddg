@@ -1,2 +1,2 @@
-astor>=0.8.1
-Flask>=2.2.4
+astor
+Flask
