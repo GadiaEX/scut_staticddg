@@ -3,6 +3,17 @@ try:
 except:
     a = 2
 
+myNum: list = [0,1]
+
+for each in myNum:
+    a = a + int(each)
+    for each_num in myNum:
+        a = a + int(each_num)
+        if a > 10:
+            break
+    a = a + 3
+
+
 if a > 10:
     if a > 90:
         b = a + 1

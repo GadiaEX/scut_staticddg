@@ -248,17 +248,19 @@ class CFGVisitor(ast.NodeVisitor):
 
         self.cfg_nodes += node_collector
 
+    # help function to connect break and continue node
+    @staticmethod
+    def connect_continue(while_node: src.Model.CFGNode.CFGNode, continue_nodes: list):
+        for each in continue_nodes:
+            each.clear_children()
+            each.add_child(while_node)
+    @staticmethod
+    def connect_break(end_node: src.Model.CFGNode.CFGNode, break_nodes: list):
+        for each in break_nodes:
+            each.clear_children()
+            each.add_child(end_node)
+
     def visit_While(self, node):
-
-        def connect_continue(while_node: src.Model.CFGNode.WhileNode, continue_nodes: list):
-            for each in continue_nodes:
-                each.clear_children()
-                each.add_child(while_node)
-
-        def connect_break(end_node: src.Model.CFGNode.EndWhileNode, break_nodes: list):
-            for each in break_nodes:
-                each.clear_children()
-                each.add_child(end_node)
 
         content = astor.to_source(node.test).strip()
         end_while = src.Model.CFGNode.EndWhileNode(node.lineno + self.base_line)
@@ -266,7 +268,6 @@ class CFGVisitor(ast.NodeVisitor):
         cfg_node.add_child(end_while)
         if len(self.cfg_nodes) > 0:
             self.cfg_nodes[-1].add_child(cfg_node)
-
 
         if hasattr(node, 'body'):
             current = []
@@ -288,8 +289,8 @@ class CFGVisitor(ast.NodeVisitor):
             for each in current:
                 if isinstance(each, src.Model.CFGNode.WhileNode):
                     while_node = each
-                    connect_continue(while_node, break_node)
-                    connect_break(end_while, break_node)
+                    self.connect_continue(while_node, break_node)
+                    self.connect_break(end_while, break_node)
                     continue_node.clear()
                     break_node.clear()
 
@@ -302,8 +303,8 @@ class CFGVisitor(ast.NodeVisitor):
 
             if while_node is None:
                 # connect them
-                connect_break(end_while, break_node)
-                connect_continue(cfg_node, continue_node)
+                self.connect_break(end_while, break_node)
+                self.connect_continue(cfg_node, continue_node)
             self.cfg_nodes += current
 
         elif hasattr(node, 'orelse'):
@@ -346,6 +347,33 @@ class CFGVisitor(ast.NodeVisitor):
             else:
                 cfg_node.add_child(end_for)
 
+            # search break and continue node
+            for_node = None
+            continue_node = []
+            break_node = []
+            for each in current:
+                if isinstance(each, src.Model.CFGNode.ForNode):
+                    for_node = each
+
+                # collect first
+                if isinstance(each, src.Model.CFGNode.BreakNode):
+                    each.clear_children()
+                    break_node.append(each)
+                if isinstance(each, src.Model.CFGNode.ContinueNode):
+                    each.clear_children()
+                    continue_node.append(each)
+
+                if isinstance(each, src.Model.CFGNode.EndForNode) and for_node is not None:
+                    self.connect_continue(for_node, break_node)
+                    self.connect_break(each, break_node)
+                    continue_node.clear()
+                    break_node.clear()
+
+            if for_node is None:
+                # connect them
+                self.connect_break(end_for, break_node)
+                self.connect_continue(cfg_node, continue_node)
+
             self.cfg_nodes += current
 
         elif hasattr(node, 'orelse'):
@@ -359,6 +387,33 @@ class CFGVisitor(ast.NodeVisitor):
                 cfg_node.add_child(CFGVisitor.__get_head_node(current))
             else:
                 cfg_node.add_child(end_for)
+
+            # search break and continue node
+            for_node = None
+            continue_node = []
+            break_node = []
+            for each in current:
+                if isinstance(each, src.Model.CFGNode.ForNode):
+                    for_node = each
+
+                # collect first
+                if isinstance(each, src.Model.CFGNode.BreakNode):
+                    each.clear_children()
+                    break_node.append(each)
+                if isinstance(each, src.Model.CFGNode.ContinueNode):
+                    each.clear_children()
+                    continue_node.append(each)
+
+                if isinstance(each, src.Model.CFGNode.EndForNode) and for_node is not None:
+                    self.connect_continue(for_node, break_node)
+                    self.connect_break(each, break_node)
+                    continue_node.clear()
+                    break_node.clear()
+
+            if for_node is None:
+                # connect them
+                self.connect_break(end_for, break_node)
+                self.connect_continue(cfg_node, continue_node)
 
             self.cfg_nodes += current
 
