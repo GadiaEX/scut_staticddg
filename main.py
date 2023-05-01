@@ -3,12 +3,19 @@ import src.DDGBuilder
 import json
 import src.Utils
 import flask
+import time
 
 debug_counter: int = 0
 def debug_specific(file_name: str, counter: int) -> None:
     with open(file_name, 'r') as src_file:
         json_codes: list = src_file.readlines()
-    build_once(json.loads(json_codes[counter])['code'])
+    json_codes = json.loads(json_codes[counter])
+    start = time.time()
+    src_code: str = json_codes['code']
+    print('\n' + src_code)
+    build_once(src_code)
+    end = time.time()
+    print(f'counter: {counter}, time:{(end - start) * 1000}ms')
     src_file.close()
 
 def build_once(src_code: str) -> str:
@@ -16,7 +23,7 @@ def build_once(src_code: str) -> str:
     cfg = src.CFGBuilder.CFGVisitor(src_code)
     cfg.build_cfg()
     # code = cfg.export_cfg_to_mermaid()
-
+    data = src.Utils.DataContainer(cfg, None, True)
     # main
     ddg = src.DDGBuilder.DDGVisitor(cfg.cfg_nodes)
     ddg.build_ddg()
@@ -28,8 +35,8 @@ def build_once(src_code: str) -> str:
         ddgs[-1].build_ddg()
     data = src.Utils.DataContainer(cfg, ddgs, True)
     return str(data)
-def sample_test():
-    with open('target.py', 'r') as src_file:
+def sample_test(file_name: str = 'target.py'):
+    with open(file_name, 'r') as src_file:
         src_code = src_file.read()
     src_file.close()
     return build_once(src_code)
@@ -40,6 +47,7 @@ def test_main(file_name:str):
         json_codes: list = src_file.readlines()
     succ_counter: int = 0
     for each_json_raw_code in json_codes:
+        start = time.time()
         json_code = json.loads(each_json_raw_code)
         try:
             build_once(json_code['code'])
@@ -47,7 +55,11 @@ def test_main(file_name:str):
         except Exception:
             pass
         debug_counter = debug_counter + 1
-        print(debug_counter)
+        end = time.time()
+        spend_time: float = (end - start)*1000
+        print(f'counter: {json_codes.index(each_json_raw_code)}, time:{spend_time}ms')
+        if spend_time > 1000.0:
+            print(json_code['code'])
     print(succ_counter)
     src_file.close()
 
@@ -63,6 +75,4 @@ def index():
 
 if __name__ == '__main__':
     # app.run()
-    ret = sample_test()
-    print(ret)
-    print('test')
+    sample_test('temp.py')

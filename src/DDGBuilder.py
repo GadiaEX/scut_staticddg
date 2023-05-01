@@ -74,7 +74,10 @@ class DDGVisitor:
 
         for each in node.defined_vars:
             # reverse variable, delete them
-            del self.var_dict[each]
+            try:
+                del self.var_dict[each]
+            except KeyError:
+                pass
 
         for each in var_backup:
             for key, value in each.items():
