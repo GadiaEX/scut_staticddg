@@ -57,9 +57,9 @@ def test_main(file_name:str):
         debug_counter = debug_counter + 1
         end = time.time()
         spend_time: float = (end - start)*1000
+        # if spend_time > 1000.0:
+            # print(json_code['code'])
         print(f'counter: {json_codes.index(each_json_raw_code)}, time:{spend_time}ms')
-        if spend_time > 1000.0:
-            print(json_code['code'])
     print(succ_counter)
     src_file.close()
 
@@ -75,4 +75,5 @@ def index():
 
 if __name__ == '__main__':
     # app.run()
-    sample_test('temp.py')
+    test_main('python_test_0.jsonl')
+    # print(sample_test())
