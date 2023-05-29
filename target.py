@@ -1,3 +1,9 @@
+def myFunction():
+    print(a)
+
+myFunction()
+a = 1
+
 try:
     a = 1
 except:
@@ -39,10 +45,21 @@ b = c + 1
 print(a)
 
 
-def test_function(a1: int):
-    """
 
-    :param a1:
-    :return:
-    """
-    print(a1)
+
+def function():
+    a = 1
+    print(a)
+    if a > 100:
+        if a > 99:
+            if a > 10:
+                a = 0
+            a = 10
+        a = 100
+
+    print(a)
+
+
+a = 1
+b = 3
+c = function(a,b)

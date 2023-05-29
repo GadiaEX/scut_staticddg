@@ -132,12 +132,30 @@ class ContinueNode(JumpNode):
     def __init__(self, line, content=None):
         content = 'continue'
         super().__init__(line, content)
+        self.linked: bool = False
+
+    def clear_children(self):
+        if not self.linked:
+            super().clear_children()
+
+    def add_child(self, child):
+        if not self.linked:
+            super().add_child(child)
 
 class BreakNode(JumpNode):
 
     def __init__(self, line, content=None):
         content = 'break'
         super().__init__(line, content)
+        self.linked: bool = False
+
+    def clear_children(self):
+        if not self.linked:
+            super().clear_children()
+
+    def add_child(self, child):
+        if not self.linked:
+            super().add_child(child)
 
 class FunctionNode(CFGNode):
 

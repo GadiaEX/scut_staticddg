@@ -62,16 +62,34 @@ class DDGVisitor:
 
 
     def _build_ddg_imp(self):
-        if self.build_with_recursive:
-            for each in self.cfg_nodes:
-                if id(each) not in self.visited_table:
+        try:
+            if self.build_with_recursive:
+                # get head first
+                heads = []
+
+                visited_table: dict = {}
+                for each in self.cfg_nodes:
+                    visited_table[id(each)] = each
+                for each in self.cfg_nodes:
+                    for each_child in each.children:
+                        try:
+                            del visited_table[id(each_child)]
+                        except KeyError:
+                            pass
+                for key, value in visited_table.items():
+                    heads.append(value)
+
+                for each in heads:
                     self.dfs_search(each)
-        else:
-            for each in self.cfg_nodes:
-                if id(each) not in self.visited_table:
-                    self.dfs_no_recursive()
+            else:
+                for each in self.cfg_nodes:
+                    if id(each) not in self.visited_table:
+                        self.dfs_no_recursive()
+        except:
+            pass
 
     def dfs_search(self, node: src.Model.CFGNode.CFGNode):
+        self.visited_table.add(id(node))
 
         if isinstance(node, src.Model.CFGNode.ContinueNode):
             self.visit_Continue(node, copy.deepcopy(self.var_dict))
@@ -100,7 +118,8 @@ class DDGVisitor:
             self.var_dict[each] = id(ddg_node)
 
         for each in node.children:
-            self.dfs_search(each)
+            if id(each) not in self.visited_table:
+                self.dfs_search(each)
 
         for each in node.defined_vars:
             # reverse variable, delete them
@@ -112,6 +131,8 @@ class DDGVisitor:
         for each in var_backup:
             for key, value in each.items():
                 self.var_dict[key] = value
+
+        self.visited_table.remove(id(node))
 
     def dfs_no_recursive(self):
         stack = []

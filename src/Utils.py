@@ -278,3 +278,20 @@ class DataContainer:
         target_info['error'] = self.error_info
 
         return json.dumps(target_info)
+
+    @staticmethod
+    def generate_error(last_result: str,title: str, content: str) -> str:
+        if len(last_result) == 0:
+            ret: dict = {
+                'error':{
+                    'title': title,
+                    'content': content
+                }
+            }
+
+            return json.dumps(ret)
+        last_info :dict = json.loads(last_result)
+        last_info['error']['title'] = title
+        last_info['error']['content'] = content
+
+        return json.dumps(last_info)
